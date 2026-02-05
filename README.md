@@ -1,32 +1,91 @@
-# 🚀 MongoDB Local Setup Guide (Windows, macOS, WSL Ubuntu)
+# 🚀 MongoDB Local Development Setup
 
-This guide helps developers install and run **MongoDB locally** on:
+This repository uses **MongoDB** for local development.  
+This guide explains how to install and run MongoDB on:
 
-- 🐧 Ubuntu (via WSL on Windows)
-- 🪟 Native Windows
-- 🍎 macOS
-
-Follow the section for your operating system.
+- 🐧 Ubuntu (via WSL)
+- 🪟 Windows (native)
+- 🍎 macOS (native)
+- 🐳 Docker (recommended for teams)
+- 🧩 Node.js connection example
 
 ---
 
 ## 📌 Prerequisites
 
-- Basic terminal / command line knowledge  
-- Admin or sudo access  
-- Internet connection  
+- Git
+- Terminal / Command Line access
+- Admin / sudo permissions
+- Node.js (for backend integration example)
 
 ---
 
-# 🐧 MongoDB on Ubuntu (WSL)
+# 🐳 Option A: MongoDB with Docker (Recommended)
 
-> Recommended: WSL2 with Ubuntu 20.04 / 22.04
+> Best for teams and consistent environments.
+
+### Install Docker
+- Windows/macOS: https://www.docker.com/products/docker-desktop  
+- Linux/WSL: https://docs.docker.com/engine/install/
+
+Verify:
+```bash
+docker --version
+docker compose version
+````
+
+### Docker Compose Setup
+
+Create `docker-compose.yml`:
+
+```yaml
+version: "3.9"
+
+services:
+  mongodb:
+    image: mongo:7
+    container_name: mongodb
+    restart: unless-stopped
+    ports:
+      - "27017:27017"
+    volumes:
+      - mongodb_data:/data/db
+    environment:
+      MONGO_INITDB_ROOT_USERNAME: admin
+      MONGO_INITDB_ROOT_PASSWORD: adminpassword
+      MONGO_INITDB_DATABASE: appdb
+
+volumes:
+  mongodb_data:
+```
+
+Start MongoDB:
+
+```bash
+docker compose up -d
+```
+
+Connect:
+
+```bash
+mongosh "mongodb://admin:adminpassword@localhost:27017/appdb?authSource=admin"
+```
+
+Stop:
+
+```bash
+docker compose down
+```
+
+---
+
+# 🐧 Option B: MongoDB on Ubuntu (WSL)
 
 ### 1️⃣ Check Ubuntu Version
 
 ```bash
 lsb_release -a
-````
+```
 
 ### 2️⃣ Install Dependencies
 
@@ -42,7 +101,7 @@ curl -fsSL https://pgp.mongodb.com/server-7.0.asc | \
   sudo gpg -o /usr/share/keyrings/mongodb-server-7.0.gpg --dearmor
 ```
 
-### 4️⃣ Add MongoDB Repository (Ubuntu 22.04 Example)
+### 4️⃣ Add MongoDB Repo (Ubuntu 22.04)
 
 ```bash
 echo "deb [ arch=amd64,arm64 signed-by=/usr/share/keyrings/mongodb-server-7.0.gpg ] \
@@ -60,15 +119,13 @@ sudo apt update
 sudo apt install -y mongodb-org
 ```
 
-### 6️⃣ Start MongoDB (WSL Note)
-
-WSL does not support `systemctl` by default. Start MongoDB manually:
+### 6️⃣ Start MongoDB (WSL)
 
 ```bash
 sudo mongod --dbpath /var/lib/mongodb --logpath /var/log/mongodb/mongod.log --fork
 ```
 
-### 7️⃣ Connect to MongoDB
+### 7️⃣ Connect
 
 ```bash
 mongosh
@@ -76,38 +133,22 @@ mongosh
 
 ---
 
-# 🪟 MongoDB on Windows
+# 🪟 Option C: MongoDB on Windows (Native)
 
-### 1️⃣ Download MongoDB
+1. Download MongoDB Community Server:
+   [https://www.mongodb.com/try/download/community](https://www.mongodb.com/try/download/community)
+2. Install with:
 
-Download the MSI installer from:
-👉 [https://www.mongodb.com/try/download/community](https://www.mongodb.com/try/download/community)
+   * ✔ Install as a Service
+   * ✔ Install MongoDB Compass (optional GUI)
 
-Choose:
-
-* Version: Latest Stable
-* Platform: Windows
-* Package: MSI
-
-### 2️⃣ Install MongoDB
-
-* Run the installer
-* Choose **Complete Setup**
-* Enable **Install MongoDB as a Service**
-* Optionally install **MongoDB Compass (GUI)**
-
-### 3️⃣ Start MongoDB Service
-
-MongoDB usually starts automatically.
-If not:
+Start MongoDB (if not auto-started):
 
 ```powershell
 net start MongoDB
 ```
 
-### 4️⃣ Connect to MongoDB
-
-Open Command Prompt or PowerShell:
+Connect:
 
 ```powershell
 mongosh
@@ -115,39 +156,28 @@ mongosh
 
 ---
 
-# 🍎 MongoDB on macOS
+# 🍎 Option D: MongoDB on macOS
 
-### 1️⃣ Install Homebrew (if not installed)
+Install Homebrew (if needed):
 
 ```bash
 /bin/bash -c "$(curl -fsSL https://raw.githubusercontent.com/Homebrew/install/HEAD/install.sh)"
 ```
 
-### 2️⃣ Tap MongoDB Formula
+Install MongoDB:
 
 ```bash
 brew tap mongodb/brew
-```
-
-### 3️⃣ Install MongoDB
-
-```bash
 brew install mongodb-community@7.0
 ```
 
-### 4️⃣ Start MongoDB
+Start MongoDB:
 
 ```bash
 brew services start mongodb-community@7.0
 ```
 
-Or run manually:
-
-```bash
-mongod --config /opt/homebrew/etc/mongod.conf
-```
-
-### 5️⃣ Connect to MongoDB
+Connect:
 
 ```bash
 mongosh
@@ -155,56 +185,103 @@ mongosh
 
 ---
 
-# ✅ Verify Installation (All Platforms)
+# 🧩 Node.js + MongoDB Example
+
+Install dependency:
+
+```bash
+npm install mongodb
+```
+
+Example `db.js`:
+
+```js
+import { MongoClient } from "mongodb";
+
+const uri = process.env.MONGODB_URI || "mongodb://localhost:27017/appdb";
+
+const client = new MongoClient(uri);
+
+export async function connectDB() {
+  await client.connect();
+  console.log("✅ MongoDB connected");
+  return client.db();
+}
+```
+
+Example usage:
+
+```js
+import { connectDB } from "./db.js";
+
+const db = await connectDB();
+const users = db.collection("users");
+
+await users.insertOne({ name: "Dev", role: "Engineer" });
+console.log(await users.find().toArray());
+```
+
+Example `.env`:
+
+```env
+MONGODB_URI=mongodb://admin:adminpassword@localhost:27017/appdb?authSource=admin
+```
+
+---
+
+# 🧪 Verify MongoDB
 
 ```bash
 mongosh
 ```
 
 ```js
-use testdb
-db.users.insertOne({ name: "Developer", status: "MongoDB works!" })
-db.users.find()
+use appdb
+db.health.insertOne({ status: "ok" })
+db.health.find()
 ```
-
-If you see your inserted document, MongoDB is working correctly 🎉
 
 ---
 
-# 🛠 Common Issues
+# 🛠 Troubleshooting
 
-### ❌ Port Already in Use (27017)
+### Port already in use (27017)
 
 ```bash
 lsof -i :27017
 ```
 
-### ❌ MongoDB Fails to Start on WSL
+### WSL data directory error
 
 ```bash
 sudo mkdir -p /var/lib/mongodb /var/log/mongodb
 sudo chown -R mongodb:mongodb /var/lib/mongodb /var/log/mongodb
 ```
 
+### Reset Docker MongoDB (⚠ Deletes data)
+
+```bash
+docker compose down -v
+```
+
 ---
 
-# 📚 Useful Links
+# 📚 Tools
 
-* MongoDB Docs: [https://www.mongodb.com/docs/](https://www.mongodb.com/docs/)
 * MongoDB Compass (GUI): [https://www.mongodb.com/products/tools/compass](https://www.mongodb.com/products/tools/compass)
+* MongoDB Docs: [https://www.mongodb.com/docs/](https://www.mongodb.com/docs/)
 
 ---
 
-# 🧑‍💻 Recommended Usage
+# 🧠 Recommendation
 
-This setup is ideal for:
-
-* Local development
-* Node.js / Express apps
-* Python / FastAPI backends
-* Testing APIs with MongoDB
+For team projects and CI/CD:
+👉 Use **Docker-based MongoDB**
+For quick experiments:
+👉 Native install is fine
 
 ---
 
 Happy hacking! 😄
-If you hit any issues, open an issue or PR to improve this guide.
+If you run into issues, feel free to open an issue or PR to improve this setup guide.
+
